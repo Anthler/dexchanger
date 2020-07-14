@@ -115,8 +115,8 @@ contract("Dex", (accounts) => {
             SIDE.BUY,
             {from: trader1}
         );
-        const buyOrders = await dex.getOrders(REP, SIDE.BUY);
-        const sellOrders = await dex.getOrders(REP, SIDE.SELL);
+        let buyOrders = await dex.getOrders(REP, SIDE.BUY);
+        let sellOrders = await dex.getOrders(REP, SIDE.SELL);
         assert(buyOrders.length === 1);
         assert(buyOrders[0].trader === trader1)
         assert(buyOrders[0].ticker === web3.utils.padRight(REP, 64));
@@ -133,14 +133,32 @@ contract("Dex", (accounts) => {
             {from: trader2}
         );
 
-        const buyOrders2 = await dex.getOrders(REP, SIDE.BUY);
-        const sellOrders2 = await dex.getOrders(REP, SIDE.SELL);
+        buyOrders = await dex.getOrders(REP, SIDE.BUY);
+        sellOrders = await dex.getOrders(REP, SIDE.SELL);
 
-        assert(buyOrders2.length === 2)
-        assert(buyOrders2[0].trader === trader2)
-        assert(buyOrders2[0].price === "11");
-        assert(buyOrders2[0].amount === web3.utils.toWei("10"))
-        assert(sellOrders2.length === 0)
+        assert(buyOrders.length === 2)
+        assert(buyOrders[0].trader === trader2)
+        assert(buyOrders[1].trader === trader1)
+        assert(buyOrders[0].price === "11");
+        assert(sellOrders.length === 0)
+
+        await dex.createLimitOrder(
+            REP,
+            web3.utils.toWei("10"),
+            9,
+            SIDE.BUY,
+            {from: trader2}
+        );
+        
+        buyOrders = await dex.getOrders(REP, SIDE.BUY);
+        sellOrders = await dex.getOrders(REP, SIDE.SELL);
+        assert(buyOrders.length === 3)
+        assert(buyOrders[0].trader === trader2)
+        assert(buyOrders[1].trader === trader1)
+        assert(buyOrders[2].trader === trader2)
+        assert(buyOrders[2].price === "9");
+        assert(sellOrders.length === 0)
+
      })
 
 });
