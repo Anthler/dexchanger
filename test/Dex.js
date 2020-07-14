@@ -1,5 +1,6 @@
 const {expectRevert, expectEvent} = require('@openzeppelin/test-helpers');
 const { web3 } = require("@openzeppelin/test-helpers/src/setup");
+const balance = require('@openzeppelin/test-helpers/src/balance');
 const Dai = artifacts.require("mocks/Dai.sol");
 const Rep = artifacts.require("mocks/Rep.sol");
 const Zrx = artifacts.require("mocks/Zrx.sol");
@@ -11,6 +12,10 @@ contract("Dex", (accounts) => {
     const [trader1, trader2] = [accounts[1], accounts[2]]
     const [DAI, BAT, REP, ZRX] = ['DAI', 'BAT', 'REP', 'ZRX']
         .map(ticker => web3.utils.fromAscii(ticker));
+    const SIDE = {
+        BUY: 0,
+        SELL: 1
+    }
 
     beforeEach(async () => {
         ([dai, zrx, bat, rep] = await Promise.all([
@@ -66,6 +71,76 @@ contract("Dex", (accounts) => {
               ),
               "token does not exist"
         })
+     })
+
+     it("Should withdraw tokens", async () => {
+        const amount = web3.utils.toWei("100");
+        await dex.deposit(DAI, amount, {from: trader1});
+        await dex.withdraw(DAI, amount, {from:trader1});
+        const [daiBalance, balance] = await Promise.all([
+            dex.traderBalances(trader1, DAI),
+            dai.balanceOf(trader1)
+        ])
+        assert(daiBalance.isZero)
+        assert(balance.toString() === web3.utils.toWei("1000"))
+     })
+
+     it("should not withdraw tokens if does not exist", async () => {
+        await expectRevert.unspecified(
+            dex.withdraw(
+            web3.utils.fromAscii("INVALID-TOKEN"), 
+            web3.utils.toWei("100"), 
+            {from: trader1})
+          ),
+          "token does not exist"
+     })
+
+     it("SHould not withdraw tokens if balance is too low", async () => {
+        await dex.deposit(DAI, web3.utils.toWei("100"), {from: trader1}); 
+        await expectRevert.unspecified(
+            dex.withdraw(
+            DAI,
+            web3.utils.toWei("1000"), 
+            {from: trader1})
+          ),
+          "Insufficient balance"
+     })
+
+     it("should create limit order", async () => {
+        await dex.deposit(DAI, web3.utils.toWei("100"), {from: trader1}); 
+        await dex.createLimitOrder(
+            REP,
+            web3.utils.toWei("10"),
+            10,
+            SIDE.BUY,
+            {from: trader1}
+        );
+        const buyOrders = await dex.getOrders(REP, SIDE.BUY);
+        const sellOrders = await dex.getOrders(REP, SIDE.SELL);
+        assert(buyOrders.length === 1);
+        assert(buyOrders[0].trader === trader1)
+        assert(buyOrders[0].ticker === web3.utils.padRight(REP, 64));
+        assert(buyOrders[0].price === "10")
+        assert(buyOrders[0].amount === web3.utils.toWei("10"))
+        assert(sellOrders.length === 0)
+        
+        await dex.deposit(DAI, web3.utils.toWei("200"), {from: trader2}); 
+        await dex.createLimitOrder(
+            REP,
+            web3.utils.toWei("10"),
+            11,
+            SIDE.BUY,
+            {from: trader2}
+        );
+
+        const buyOrders2 = await dex.getOrders(REP, SIDE.BUY);
+        const sellOrders2 = await dex.getOrders(REP, SIDE.SELL);
+
+        assert(buyOrders2.length === 2)
+        assert(buyOrders2[0].trader === trader2)
+        assert(buyOrders2[0].price === "11");
+        assert(buyOrders2[0].amount === web3.utils.toWei("10"))
+        assert(sellOrders2.length === 0)
      })
 
 });

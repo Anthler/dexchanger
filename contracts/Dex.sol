@@ -87,8 +87,8 @@ contract Dex{
     
     function createLimitOrder(
         bytes32 _ticker ,
-        uint _price, 
         uint _amount, 
+        uint _price, 
         Side _side
     ) 
     tokenExists(_ticker) 
