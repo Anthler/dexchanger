@@ -34,7 +34,7 @@ function AllTrades({trades}) {
     return (
       <ResponsiveContainer width="100%" height={200}>
       <LineChart data={trades}>
-        <Line type="monotone" dataKey="price" stroke="#741cd7" />
+        <Line type="monotone" dataKey="price" stroke="#37ed23" />
         <CartesianGrid stroke="#000000" />
         <XAxis dataKey="date" tickFormatter={dateStr => {
           const date = new Date(parseInt(dateStr) * 1000); 
